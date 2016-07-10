@@ -1,8 +1,41 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <body>
+
+<h1> Pandemic!</h1>
+We have decided to investigate a simple model of propagation of a disease in a society.
+
+
 <a href=pandemie.html>pandemie.html</a><br>
+First, we model our society with a simple "preferential attachment" network. Generation of a network following the algorithm of a social network. Each point represents a person, and each point is connected to at least another one. The more a point is connected the more it is popular and the more it has chance to be affected by its neighbours.<br>
+<br>
+<br>
 <a href=pandemie2.html>pandemie2.html</a><br>
+Then, we simulate the propation of a sickness like a cold in the population. The red are the people affected by the disease. The green are the one healed. They cannot be infected again (they are immunised).<br>
+
+In this model, a single person is infected first. Every neighbor to an infected person has a 1% chance of being infected each time step. After is 55 time steps, an infected person heals, and can't be infected again.<br>
+ 
+Graph below: Fraction of the population infected in yellow and fraction of population healed in blue versus time. As soon as a really popular one get infected, we can see the graph jump and really propagates fast.<br>
+
+(Note: You MAY have to try a few simulations before you get one that propagates well. Refresh the webpage to get a new simulation)<br>
+<br>
+<br>
 <a href=pandemie3.html>pandemie3.html</a><br>
+Here, we repeat many simulations one after another. In these simulation, some fraction of the population is vaccinated (purple) and can never be infected.<br>
+
+Graph 1: Faction of the population infected versus number of people vaccinated at the start. The blue curve is the average with the red and the green ones are standard deviation around the average.<br>
+Graph 2: Cost to state as a function of vaccinated fraction of the population. Cost is calculated as follow: each person that gets sick costs 100$, each person that was vaccinated cost 10$.<br>
+
+This <a href=pandemie3.png>picture</a> shows the result of severay hundred simuations. We can see that at low vaccination rates, the diseases is really costly as, most of the time, a very large fraction is contaminated. At high vaccination rates, the costs are low, as most people were vaccinated and cost less. The optimal cost (in an average sense) is obtained somewhere between 60 et 70% of vaccination, as the group has attained herd immunity and vaccinating more people cost more but are not useful. Between 10% and 50%, uncertainty is large as some simulation die of quickly (the diseases having been, by luck, insulated from the rest of the population by vaccinated individuals), but in other, the vaccine fails to stop propagation.<br>
+<br>
+<br>
 <a href=pandemie4.html>pandemie4.html</a><br>
+(These simulations no longer have vaccinated individuals) Pandemic simulation by changing the connectivity (number of node, on average each node is connected, between 1 or 2) of the disease.<br>
+
+Graph: Fraction of the population infected versus duration of the pandemic. A bluer color represent a less connnected graph.<br>
+
+This <a href=pandemie4.png>picture</a> shows the result of severay hundred simuations. As we can see, at low connectivity, duration is short and mortality is low, as the disease dies off quickly without having infected many people. At high connectivity, mortality is high as the disease easily reaches everyone. Duration is longer (accounting for the time to spread around, but not that much longer.) At intermediate connectivity, luck can greatly affect the outcome, and the spread is much larger. Average duration is longer the either high or low endpoints as the lesser connectivity slows the diseases progression but fails to stop it.<br>
+
+
+
 </body>
