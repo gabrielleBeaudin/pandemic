@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.links line {
+  opacity: 0.5
+}
+
+
+</style>
+<svg width="960" height="600"></svg><br>
+<button id="startPan" onclick="startSimul()">Start Pandemic</button><br>
+[Fraction of population infected] and [Fraction of population healed] as a function of [time]:<br>
+<div id="placeholder" style="width: 600px;height: 600px;"></div>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js "></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.min.js"></script>
+<script src="pandemie.js"></script>
+<script>
+"use strict";
+
+//system
+var logger = document.getElementById("logger");
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+    
+var graph;
+
+function randomInt(a,b){
+  return Math.floor(Math.random() * b) + a 
+}
+
+
+//Settings
+var nNodes = 500;
+//var nNewlinks = 1;
+var propVacc = 0.1;
+
+var timeSick = 55;
+var probTrans = 0.01;
+var speed = 10;
+
+//Graph generation
+var graph = {
+  nodes: [],
+  links: []
+}
+
+var seedSize = 3;
+
+//Génération des nodes
+for(var i=0; i < nNodes; i++){
+  graph.nodes.push({id:i, health:0, timeSickLeft:timeSick});
+}
+
+// Génération réseau seed
+for(var i=0; i < seedSize; i++){
+  var a = randomInt(0, seedSize-1);
+  if(a>=i) a++
+  
+  graph.links.push({source:i, target:a});
+}
+
+
+  //load graph
+  var simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().distance(10).id(function(d) { return d.id; }))
+      .force("charge", d3.forceManyBody().distanceMax(100))
+      .force("center", d3.forceCenter(width / 2, height / 2));;
+  
+  var link = svg.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+
+  var node = svg.append("g")
+    .attr("class", "nodes")
+    .selectAll("circle")
+    .data(graph.nodes)
+    .enter().append("circle")
+      .attr("r", 3)
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
+
+  node.append("title").text(function(d) { return d.id; });
+
+  simulation.nodes(graph.nodes).on("tick", ticked);
+
+  simulation.force("link").links(graph.links);
+
+  function ticked() {
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+        .attr("stroke", function(d) {
+          if((d.source.health == 1) && (d.target.health == 0)) return "red"
+          if((d.source.health == 0) && (d.target.health == 1)) return "red"
+          return "black"
+        })
+
+    node
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+        .attr("fill", function(d) {
+          switch(d.health){
+            case 0:
+              return "blue";
+              break;
+            case 1:
+              return "red";
+              break;   
+            case 2:
+              return "green";
+              break;
+            case 3:
+              return "purple";
+              break; 
+          }
+        })
+  }
+
+
+
+
+
+
+
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+
+
+//Simulation
+var interval;
+
+
+
+var genStep = seedSize;
+
+for(var genStep = seedSize; genStep < nNodes; genStep++){
+  var newlinks = [];
+  
+  var nNewlinks;
+  
+  if(Math.random() < 0.7){
+    nNewlinks=1
+  }else{
+    nNewlinks=2
+  }
+  
+  for(var j=0; j<nNewlinks; j++){
+    var a;
+    
+    do{
+      a = randomInt(0, graph.links.length);
+      var curlink = graph.links[a];
+      
+      if(Math.random() < 0.5){
+        a = curlink.source;
+      }else{
+        a = curlink.target;
+      }
+    }while(newlinks.indexOf(a) != -1);
+    
+    graph.links.push({source:genStep, target:a});
+   
+    newlinks.push(a);
+  }
+}
+
+link.remove()
+
+link = svg.append("g")
+  .attr("class", "links")
+  .selectAll("line")
+  .data(graph.links)
+  .enter().append("line")
+
+
+simulation.force("link").links(graph.links);
+
+simulation.alpha(0.3).restart()
+
+var graphDataSick = [];
+var graphDataImmun = [];
+var time = 0;
+
+function startSimul(){
+  initPandemie(graph)
+
+  ticked()
+  
+  graphDataSick.push([time,pandemieStats.nSick/nNodes])
+  graphDataImmun.push([time,pandemieStats.nImmun/nNodes])
+  
+  $.plot("#placeholder",[graphDataSick,graphDataImmun]);
+  
+  interval = setInterval(stepSimulation, speed);
+}
+
+function stepSimulation(){
+  iteratePandemie(graph);
+  
+  ticked()
+  
+  time++;
+  
+  graphDataSick.push([time,pandemieStats.nSick/nNodes]);
+  graphDataImmun.push([time,pandemieStats.nImmun/nNodes]);
+  
+  $.plot("#placeholder",[graphDataSick,graphDataImmun]);
+  
+  if(pandemieStats.nSick==0){
+    clearInterval(interval);
+  }
+}
+
+
+</script>

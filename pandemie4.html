@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.links line {
+  opacity: 0.5
+}
+
+
+</style>
+Simulation:<br>
+<svg width="600" height="600"></svg><br>
+<!--<button id="start" onclick="startSimul()">Start Simulation</button><br>
+Simulation Log:<br>
+<textarea id="logger" rows="10" cols="100"></textarea>
+<textarea id="curLogger" rows="1" cols="100"></textarea>
+-->
+
+[Fraction of population infected] as a function of [Pandemic duration]; color = [contageousness]:<br>
+<div id="placeholder" style="width: 600px;height: 600px;"></div>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js "></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/flot/0.8.3/jquery.flot.min.js"></script>
+<script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/3.3.0/math.min.js"></script>
+<script src="graphGen2.js"></script>
+<script src="pandemie.js"></script>
+<script>
+"use strict";
+
+//system
+//var logger = document.getElementById("logger");
+//var curLogger = document.getElementById("curLogger");
+
+function randomInt(a,b){
+  return Math.floor(Math.random() * b) + a 
+}
+
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+    
+var graph;
+var simulation;
+var tickFunc;
+
+function initSimulation(graph){
+  simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().distance(10).id(function(d) { return d.id; }))
+      .force("charge", d3.forceManyBody().distanceMax(100))
+      .force("center", d3.forceCenter(width / 2, height / 2));
+
+  //load graph
+  var link = svg.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(graph.links)
+    .enter().append("line")
+
+  var node = svg.append("g")
+    .attr("class", "nodes")
+    .selectAll("circle")
+    .data(graph.nodes)
+    .enter().append("circle")
+      .attr("r", 3)
+      .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
+
+  node.append("title").text(function(d) { return d.id; });
+
+  simulation.nodes(graph.nodes).on("tick", ticked);
+
+  simulation.force("link").links(graph.links);
+
+  
+  function ticked() {
+  
+    link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+        .attr("stroke", function(d) {
+          if((d.source.health == 1) && (d.target.health == 0)) return "red"
+          if((d.source.health == 0) && (d.target.health == 1)) return "red"
+          return "black"
+        })
+
+    node
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+        .attr("fill", function(d) {
+          switch(d.health){
+            case 0:
+              return "blue";
+              break;
+            case 1:
+              return "red";
+              break;   
+            case 2:
+              return "green";
+              break;
+            case 3:
+              return "purple";
+              break; 
+          }
+        })
+  }
+  
+  
+  return ticked;
+}
+
+function clearSimulation(){
+  d3.selectAll("svg > *").remove();
+  simulation.stop();
+}
+
+
+//Settings
+var nNodes = 400;
+var oddTwoLinks = 0.1;
+var propVacc = 0.1;
+
+var timeSick = 10;
+var probTrans = 0.05;
+var speed = 1;
+
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+
+
+
+
+//Simulation
+var interval;
+var i;
+
+var graphData = [];
+var graphColors = [];
+
+function startSimul(){
+  i=0;
+
+  graph  = genGraph(nNodes, oddTwoLinks, 0);
+
+  oddTwoLinks = Math.random();  
+  
+  tickFunc = initSimulation(graph)
+  initPandemie(graph)
+
+  tickFunc()
+  
+  interval = setInterval(stepSimulation, speed);
+}
+
+function stepSimulation(){
+  if(pandemieStats.nSick == 0){
+    //logger.value += "\nSimulation " + i + " - Duration: " + pandemieStats.nIter + "; Infected: " + pandemieStats.nImmun
+    //logger.value += pandemieStats.nIter + " " + pandemieStats.nImmun + " " + pandemieStats.nVacc + "\n"
+    //logger.scrollTop=logger.scrollHeight;
+    
+    graphData.push([[pandemieStats.nIter,pandemieStats.nImmun/nNodes]])
+    
+    var r=0;
+    var b=0;
+    var t=0;
+    
+    if(oddTwoLinks<0.5){
+      t=oddTwoLinks/0.5
+      
+      r=Math.round(255*t)
+      b=255
+    }else{
+      t=(oddTwoLinks-0.5)/0.5
+      
+      r=255
+      b=Math.round(255*(1-t))
+    }
+    
+    graphColors.push("rgb("+r+",0,"+b+")")
+    
+    console.log(graphData);
+    console.log(graphColors);
+    
+    $.plot("#placeholder",graphData,{
+      series:{
+        points: {
+          show: true,
+          radius: 3,
+        },
+      },
+      colors: graphColors
+    });
+  
+    i++;
+    
+    /*if(i==10){
+      clearInterval(interval);
+    }else*/{    
+      clearSimulation(); 
+      
+      oddTwoLinks = Math.random();
+      graph = genGraph(nNodes, oddTwoLinks, 0);
+      
+      tickFunc = initSimulation(graph);
+      initPandemie(graph)
+    }
+  }else{
+    iteratePandemie(graph);
+    //curLogger.value = "iteration:" + pandemieStats.nIter + "; sick:" + pandemieStats.nSick + "; immun:" + pandemieStats.nImmun + "\n"
+  }
+  
+  tickFunc()
+}
+
+startSimul()
+</script>
